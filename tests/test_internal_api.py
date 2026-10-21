@@ -30,7 +30,7 @@ def test_payout_lookup(client: TestClient, config: Config) -> None:
     response = client.get("/internal/payouts", params={"expense_id": 42}, headers=auth(config))
     assert response.status_code == 200
     assert response.json()["amount_cents"] == 18450
-    assert response.json()["status"] == "submitted"
+    assert response.json()["status"] == "scheduled"
 
 
 def test_missing_payout_is_404(client: TestClient, config: Config) -> None:
