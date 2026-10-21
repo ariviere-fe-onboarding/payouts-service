@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from payouts.ach import AchClient
 from payouts.crypto import FieldCipher
 from payouts.models import BankAccount, Payout, PayoutStatus
+from payouts.notify import notify_employee
 from payouts.schemas import ExpenseApprovedEvent
 
 logger = logging.getLogger(__name__)
@@ -60,4 +61,5 @@ def create_payout(
         payout.status = PayoutStatus.SUBMITTED
     session.commit()
     logger.info("payout %s for expense %s: %s", payout.id, payout.expense_id, payout.status)
+    notify_employee(payout)
     return payout, True
