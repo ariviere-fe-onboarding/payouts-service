@@ -13,6 +13,7 @@ from payouts.models import BankAccount
 DEMO_ACCOUNTS: tuple[tuple[str, str, str, str], ...] = (
     ("emp-priya", "Harbor Credit Union", "110000000", "000123456789"),
     ("emp-marcus", "Harbor Credit Union", "110000000", "000987654321"),
+    ("emp-lena", "Harbor Credit Union", "110000000", "000222033344"),
     ("emp-jonah", "Lakeside Bank", "110000000", "000555012345"),
     ("emp-dana", "Lakeside Bank", "110000000", "000444098765"),
 )

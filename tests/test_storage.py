@@ -27,7 +27,7 @@ def test_seed_is_idempotent(config: Config) -> None:
     app = create_app(config)
     cipher = FieldCipher(config.encryption_key)
     with app.state.session_factory() as session:
-        assert seed(session, cipher) == 4
+        assert seed(session, cipher) == 5
         assert seed(session, cipher) == 0
     app.state.engine.dispose()
 

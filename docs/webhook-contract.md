@@ -1,6 +1,7 @@
 # `expense.approved` webhook contract
 
-`expense-app` sends this webhook when Finance gives final approval to an expense.
+`expense-app` sends this webhook when an expense receives final approval: from the
+submitter's manager for amounts up to $500.00, otherwise from Finance.
 `payouts-service` is the only consumer. The pinned fixture is
 [`tests/contract/expense_approved_v1.json`](../tests/contract/expense_approved_v1.json);
 `expense-app` keeps an identical copy and both test suites validate against it.
@@ -33,7 +34,7 @@ receiver's clock are rejected.
 | `data.employee_id` | string | Employee to reimburse, e.g. `emp-priya` |
 | `data.amount_cents` | integer | Amount in cents, greater than 0 |
 | `data.currency` | string | ISO 4217; only `USD` is supported |
-| `data.approved_by` | string | Finance approver's employee ID |
+| `data.approved_by` | string | Final approver's employee ID |
 
 Unknown fields are ignored, so producers may add fields within version 1.
 
