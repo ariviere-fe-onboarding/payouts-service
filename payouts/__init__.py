@@ -1,0 +1,1 @@
+"""Fernway payouts service."""
