@@ -1,58 +1,81 @@
-# yaml-language-server: $schema=https://storage.googleapis.com/coderabbit_public_assets/schema.v2.json
-# CodeRabbit config for payouts-service: the Finance Platform service that holds bank data.
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Minimal review presentation adapted from expense-app; payouts safeguards retained.
 language: en-US
 early_access: true
-
-tone_instructions: >-
-  Senior reviewer. Open each finding with "Observation:", name the line and the invariant
-  at risk, then explain impact. No emoji, no filler.
-
+tone_instructions: Be brief and concrete. Lead with the defect and user, data or money impact. No praise,
+  style, naming remarks or restating code. Call out changes involving payout authorization, reimbursement
+  data, bank details or the expense.approved contract.
 reviews:
   profile: chill
-  request_changes_workflow: true
+  auto_approvals:
+    enabled: true
+  enable_prompt_for_ai_agents: true
+  merge_risk_instructions: 'High risk: authentication, object authorization, bank data encryption or masking,
+    payment submission, idempotency, monetary units, expense.approved payloads and signing, database schema,
+    CI and deployment configuration, and agent rule files. Low risk: copy, styling, docs, additive tests,
+    and internal refactors with unchanged behavior covered by tests.'
+  collapse_walkthrough: true
   high_level_summary: true
-  changed_files_summary: true
-  sequence_diagrams: true
-  estimate_code_review_effort: true
+  changed_files_summary: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  review_status: false
+  review_details: false
+  commit_status: true
+  fail_commit_status: true
   assess_linked_issues: true
-  related_issues: true
-  related_prs: true
-  suggested_labels: true
-  suggested_reviewers: true
+  related_issues: false
+  related_prs: false
+  suggested_labels: false
+  suggested_reviewers: false
   poem: false
-
+  in_progress_fortune: false
   auto_review:
     enabled: true
     auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 5
     drafts: false
-
+    ignore_title_keywords:
+      - '[skip review]'
   path_filters:
-    - "!.venv/**"
-    - "!**/__pycache__/**"
-
+    - '!**/*.lock'
+    - '!**/*.min.js'
+    - '!**/*.min.css'
+    - '!**/*.snap'
+    - '!**/*.generated.*'
+    - '!.venv/**'
+    - '!**/__pycache__/**'
   path_instructions:
-    - path: "**/{AGENTS.md,CLAUDE.md,.cursorrules,copilot-instructions.md}"
+    - path: '**/*'
+      instructions: 'Your conventions first: the team''s rule files and standards documents apply before
+        general practice. Judge the change against its title, description and linked issue; trace the
+        headline behaviour the pull request claims before anything else and say if it is not actually
+        delivered. Report defects and risks the change introduces: correctness, security, reliability,
+        data loss, performance regressions, breaking changes to anything another component or repository
+        calls. Flag a test deleted or weakened that covered behaviour the change touches, and files changed
+        that the title, description and issue do not account for. Do not request refactors, style, naming,
+        formatting or documentation changes outside the diff. Keep comments brief and actionable.'
+    - path: '**/{AGENTS.md,CLAUDE.md,.cursorrules,copilot-instructions.md}'
       instructions: |
         Agent-instruction files are a security-critical surface. Flag changes that expand
         agent authority, weaken guardrails, or skip review, testing, or approval steps.
-    - path: "payouts/{signing,main,service}.py"
+    - path: payouts/{signing,main,service}.py
       instructions: |
         This code moves money. Every webhook must be signature-verified with a constant-time
         comparison and processed at most once per event and per expense. Flag any change
         that relaxes verification, idempotency, or contract validation.
-    - path: "payouts/{models,crypto,schemas}.py"
+    - path: payouts/{models,crypto,schemas}.py
       instructions: |
         Bank account and routing numbers must stay encrypted at rest and must never leave
         this service unmasked. Flag any response, log line, or column that exposes them.
-    - path: "tests/contract/**"
+    - path: tests/contract/**
       instructions: |
         This fixture pins the expense.approved v1 contract shared with expense-app. Any change
         here is a cross-repository contract change and must follow the API contracts guideline.
-    - path: "**/*.tf"
+    - path: '**/*.tf'
       instructions: |
         Infrastructure as code. Flag public exposure, missing encryption, permissive IAM, and
         missing public-access blocks.
-
   tools:
     ruff:
       enabled: true
@@ -67,38 +90,51 @@ reviews:
     ast-grep:
       essential_rules: true
       rule_dirs:
-        - ".coderabbit/ast-grep-rules"
-
+        - .coderabbit/ast-grep-rules
   pre_merge_checks:
+    title:
+      mode: 'off'
+    description:
+      mode: 'off'
+    docstrings:
+      mode: 'off'
     issue_assessment:
       mode: warning
     custom_checks:
-      - name: "Security Gate"
-        mode: error
-        instructions: >-
-          Fail only when the review finds a SECURITY-RELATED major or critical issue, for
-          example: weakened webhook signature verification, secrets in code or logs, unmasked
-          or unencrypted bank data, missing authorization, injection, SSRF, path traversal,
-          or insecure infrastructure. Do not fail on minor or purely functional issues.
-      - name: "Contract compatibility"
+      - name: Scope matches description
         mode: warning
-        instructions: >-
-          Fail when the change alters the expense.approved webhook contract (fields, types,
-          units, signature scheme, or idempotency) without bumping the version as required
-          by the API contracts guideline, or would break the producer in expense-app.
-
+        instructions: 'Pass when every changed file is accounted for by the pull request title, description
+          or linked issue. Fail when any of these is changed without the description saying so: an agent
+          rule file (AGENTS.md, CLAUDE.md, .cursorrules and similar), a CI workflow, deployment or infrastructure
+          configuration, a database migration or schema, a dependency manifest or lockfile with a non-patch
+          change, or a file under a folder the description does not mention at all. List the unaccounted-for
+          files.'
+      - name: Security Gate
+        mode: error
+        instructions: 'Fail only when the review finds a SECURITY-RELATED major or critical issue, for
+          example: weakened webhook signature verification, secrets in code or logs, unmasked or unencrypted
+          bank data, missing authorization, injection, SSRF, path traversal, or insecure infrastructure.
+          Do not fail on minor or purely functional issues.'
+      - name: Contract compatibility
+        mode: warning
+        instructions: Fail when the change alters the expense.approved webhook contract (fields, types,
+          units, signature scheme, or idempotency) without bumping the version as required by the API
+          contracts guideline, or would break the producer in expense-app.
   finishing_touches:
+    autofix:
+      enabled: true
+    fix_ci:
+      enabled: false
     docstrings:
-      enabled: true
+      enabled: false
     unit_tests:
-      enabled: true
-
+      enabled: false
 knowledge_base:
   opt_out: false
   web_search:
     enabled: true
   learnings:
-    scope: auto
+    scope: local
   issues:
     scope: auto
   pull_requests:
@@ -106,14 +142,14 @@ knowledge_base:
   code_guidelines:
     enabled: true
     filePatterns:
-      # Organization standards live in a separate repository; findings here can cite them.
-      - files: "ariviere-fe-onboarding/engineering-standards:guidelines/*.md"
-        applyTo: "**/*.py"
-
+      - files: ariviere-fe-onboarding/engineering-standards:guidelines/*.md
+        applyTo: '**/*.py'
   automatic_repository_linking: false
   linked_repositories:
-    - repository: "ariviere-fe-onboarding/expense-app"
-      instructions: >-
-        expense-app produces the expense.approved webhook this service consumes and calls the
-        /internal API. When a change affects that contract or API, check the producer and cite
-        the affected file in expense-app.
+    - repository: ariviere-fe-onboarding/expense-app
+      instructions: expense-app produces the expense.approved webhook this service consumes and calls
+        the /internal API. When a change affects that contract or API, check the producer and cite the
+        affected file in expense-app.
+chat:
+  art: false
+  auto_reply: true
