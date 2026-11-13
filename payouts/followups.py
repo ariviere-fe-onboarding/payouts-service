@@ -27,6 +27,13 @@ class FollowupOptions(BaseModel):
     limit: int = Field(default=25, ge=1, le=100)
 
 
+def _spreadsheet_text(value: str) -> str:
+    """Mark formula-like text as literal, including whitespace-obscured prefixes."""
+    if value.startswith(("\t", "\r", "\n")) or value.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
 def export_followups(session: Session, options: FollowupOptions, output: TextIO) -> int:
     """Write the oldest held payouts first, capped at the requested batch size."""
     payouts = session.scalars(
@@ -46,9 +53,9 @@ def export_followups(session: Session, options: FollowupOptions, output: TextIO)
             (
                 payout.id,
                 payout.expense_id,
-                payout.employee_id,
+                _spreadsheet_text(payout.employee_id),
                 payout.amount_cents,
-                payout.currency,
+                _spreadsheet_text(payout.currency),
                 created_at.astimezone(UTC).isoformat(),
             )
         )

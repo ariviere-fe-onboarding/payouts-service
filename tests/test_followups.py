@@ -125,3 +125,34 @@ def test_command_separates_csv_from_progress(
     captured = capsys.readouterr()
     assert len(list(csv.DictReader(StringIO(captured.out)))) == 1
     assert captured.err == "Exported 1 follow-ups.\n"
+
+
+@pytest.mark.parametrize(
+    "employee_id",
+    [
+        "=1+1",
+        "+1+1",
+        "-1+1",
+        "@SUM(1)",
+        "\t=1+1",
+        "\r=1+1",
+        "\n=1+1",
+        "  =1+1",
+        "\tplain",
+        'emp,"quoted"\nnext',
+    ],
+)
+def test_export_neutralizes_formula_text_without_changing_storage(
+    session: Session, employee_id: str
+) -> None:
+    payout = add_payout(session, 401, PayoutStatus.NEEDS_BANK_ACCOUNT)
+    payout.employee_id = employee_id
+    session.commit()
+    output = StringIO()
+
+    assert export_followups(session, FollowupOptions(), output) == 1
+    rows = list(csv.DictReader(StringIO(output.getvalue())))
+    expected = employee_id if employee_id.startswith("emp") else "'" + employee_id
+    assert rows[0]["employee_id"] == expected
+    session.refresh(payout)
+    assert payout.employee_id == employee_id
