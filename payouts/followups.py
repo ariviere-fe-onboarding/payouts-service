@@ -32,7 +32,7 @@ def export_followups(session: Session, options: FollowupOptions, output: TextIO)
     payouts = session.scalars(
         select(Payout)
         .where(Payout.status == PayoutStatus.NEEDS_BANK_ACCOUNT)
-        .order_by(Payout.created_at.desc(), Payout.id)
+        .order_by(Payout.created_at.asc(), Payout.id)
         .limit(options.limit)
     )
     writer = csv.writer(output)

@@ -77,6 +77,21 @@ def test_batch_limit_and_stable_ties(session: Session) -> None:
     assert [row["payout_id"] for row in rows] == [str(first.id)]
 
 
+def test_batch_selects_oldest_before_applying_limit(session: Session) -> None:
+    newest = add_payout(session, 211, PayoutStatus.NEEDS_BANK_ACCOUNT)
+    oldest = add_payout(session, 212, PayoutStatus.NEEDS_BANK_ACCOUNT)
+    middle = add_payout(session, 213, PayoutStatus.NEEDS_BANK_ACCOUNT)
+    newest.created_at = datetime(2026, 11, 12, 14, tzinfo=UTC)
+    oldest.created_at = datetime(2026, 11, 10, 14, tzinfo=UTC)
+    middle.created_at = datetime(2026, 11, 11, 14, tzinfo=UTC)
+    session.commit()
+    output = StringIO()
+
+    assert export_followups(session, FollowupOptions(limit=2), output) == 2
+    rows = list(csv.DictReader(StringIO(output.getvalue())))
+    assert [row["payout_id"] for row in rows] == [str(oldest.id), str(middle.id)]
+
+
 def test_empty_queue_has_headers(session: Session) -> None:
     output = StringIO()
     assert export_followups(session, FollowupOptions(), output) == 0
