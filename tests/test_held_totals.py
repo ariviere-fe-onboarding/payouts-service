@@ -68,6 +68,17 @@ def test_summary_filters_status_currency_and_small_amounts(session: Session) -> 
     assert [(p.id, p.status) for p in session.scalars(select(Payout).order_by(Payout.id))] == before
 
 
+@pytest.mark.parametrize("minimum", [50_000, 100_000])
+def test_summary_includes_exact_minimum(session: Session, minimum: int) -> None:
+    add_payout(session, 401, minimum - 1)
+    add_payout(session, 402, minimum)
+
+    summary = summarize_held_payouts(session, HeldTotalsOptions(minimum_amount_cents=minimum))
+
+    assert summary.payout_count == 1
+    assert summary.total_amount_cents == minimum
+
+
 def test_empty_summary_reports_zeroes(session: Session) -> None:
     summary = summarize_held_payouts(session, HeldTotalsOptions())
     assert summary.payout_count == 0
@@ -96,7 +107,7 @@ def test_command_outputs_only_aggregate_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    add_payout(session, 301, 75_000)
+    add_payout(session, 301, 50_000)
     monkeypatch.setattr("payouts.held_totals.get_config", lambda: config)
     main([])
     captured = capsys.readouterr()
@@ -104,6 +115,6 @@ def test_command_outputs_only_aggregate_json(
         "currency": "USD",
         "minimum_amount_cents": 50_000,
         "payout_count": 1,
-        "total_amount_cents": 75_000,
+        "total_amount_cents": 50_000,
     }
     assert captured.err == ""

@@ -39,7 +39,7 @@ def summarize_held_payouts(session: Session, options: HeldTotalsOptions) -> Held
         select(func.count(Payout.id), func.coalesce(func.sum(Payout.amount_cents), 0)).where(
             Payout.status == PayoutStatus.NEEDS_BANK_ACCOUNT,
             Payout.currency == "USD",
-            Payout.amount_cents > options.minimum_amount_cents,
+            Payout.amount_cents >= options.minimum_amount_cents,
         )
     ).one()
     return HeldPayoutTotals(
