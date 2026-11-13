@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
@@ -28,6 +29,19 @@ class RecordingAch:
     def submit_credit(self, routing_number: str, account_number: str, amount_cents: int) -> str:
         self.credits.append((routing_number, account_number, amount_cents))
         return f"TRACE{len(self.credits)}"
+
+
+@pytest.fixture(autouse=True)
+def notifications(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """Capture notification-service calls instead of sending them."""
+    sent: list[dict[str, Any]] = []
+
+    def fake_post(url: str, json: dict[str, Any]) -> httpx.Response:
+        sent.append(json)
+        return httpx.Response(202, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr("payouts.notify.httpx.post", fake_post)
+    return sent
 
 
 @pytest.fixture
