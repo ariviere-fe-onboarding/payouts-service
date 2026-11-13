@@ -17,13 +17,13 @@ def post_event(client: TestClient, config: Config, event: dict[str, object]) -> 
     return client.post(URL, content=body, headers=signed_headers(config.webhook_secret, body))
 
 
-def test_contract_fixture_creates_submitted_payout(
+def test_contract_fixture_schedules_payout(
     client: TestClient, config: Config, ach: RecordingAch
 ) -> None:
     response = post_event(client, config, contract_event())
     assert response.status_code == 202
-    assert response.json()["status"] == "submitted"
-    assert ach.credits == [("110000000", "000123456789", 18450)]
+    assert response.json()["status"] == "scheduled"
+    assert ach.credits == []
 
 
 def test_retried_event_is_paid_once(client: TestClient, config: Config, ach: RecordingAch) -> None:
@@ -31,7 +31,6 @@ def test_retried_event_is_paid_once(client: TestClient, config: Config, ach: Rec
     second = post_event(client, config, contract_event())
     assert second.status_code == 200
     assert second.json() == first.json()
-    assert len(ach.credits) == 1
 
 
 def test_same_expense_with_new_event_id_is_paid_once(
@@ -41,7 +40,6 @@ def test_same_expense_with_new_event_id_is_paid_once(
     replay = contract_event()
     replay["event_id"] = "evt-different"
     assert post_event(client, config, replay).status_code == 200
-    assert len(ach.credits) == 1
 
 
 def test_employee_without_bank_account_is_held(

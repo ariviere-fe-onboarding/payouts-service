@@ -70,7 +70,7 @@ async def expense_approved(request: Request, session: DbSession, config: AppConf
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "Payload does not match contract v1."
         ) from error
-    payout, created = create_payout(session, event, request.app.state.cipher, request.app.state.ach)
+    payout, created = create_payout(session, event)
     return JSONResponse(
         {"payout_id": payout.id, "status": payout.status.value},
         status_code=status.HTTP_202_ACCEPTED if created else status.HTTP_200_OK,

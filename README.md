@@ -26,6 +26,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/uvicorn payouts.main:create_app --factory --port 8001
 ```
 
+Approved expenses are scheduled and sent in one ACH batch a day. Run the batch after
+the 17:00 cutoff with `.venv/bin/python -m payouts.batch`.
+
 ## API
 
 | Route | Auth | Purpose |

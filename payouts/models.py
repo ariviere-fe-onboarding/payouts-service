@@ -19,6 +19,7 @@ def utcnow() -> datetime:
 class PayoutStatus(StrEnum):
     """Lifecycle of a reimbursement payout."""
 
+    SCHEDULED = "scheduled"
     SUBMITTED = "submitted"
     NEEDS_BANK_ACCOUNT = "needs_bank_account"
     FAILED = "failed"
