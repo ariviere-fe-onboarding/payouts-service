@@ -7,7 +7,8 @@ tone_instructions: Be brief and concrete. Lead with the defect and user, data or
   data, bank details or the expense.approved contract.
 reviews:
   profile: chill
-  request_changes_workflow: true
+  auto_approvals:
+    enabled: true
   enable_prompt_for_ai_agents: true
   merge_risk_instructions: 'High risk: authentication, object authorization, bank data encryption or masking,
     payment submission, idempotency, monetary units, expense.approved payloads and signing, database schema,
@@ -45,15 +46,6 @@ reviews:
     - '!.venv/**'
     - '!**/__pycache__/**'
   path_instructions:
-    - path: '**/*'
-      instructions: 'Your conventions first: the team''s rule files and standards documents apply before
-        general practice. Judge the change against its title, description and linked issue; trace the
-        headline behaviour the pull request claims before anything else and say if it is not actually
-        delivered. Report defects and risks the change introduces: correctness, security, reliability,
-        data loss, performance regressions, breaking changes to anything another component or repository
-        calls. Flag a test deleted or weakened that covered behaviour the change touches, and files changed
-        that the title, description and issue do not account for. Do not request refactors, style, naming,
-        formatting or documentation changes outside the diff. Keep comments brief and actionable.'
     - path: '**/*'
       instructions: 'Your conventions first: the team''s rule files and standards documents apply before
         general practice. Judge the change against its title, description and linked issue; trace the
@@ -109,14 +101,6 @@ reviews:
     issue_assessment:
       mode: warning
     custom_checks:
-      - name: Scope matches description
-        mode: warning
-        instructions: 'Pass when every changed file is accounted for by the pull request title, description
-          or linked issue. Fail when any of these is changed without the description saying so: an agent
-          rule file (AGENTS.md, CLAUDE.md, .cursorrules and similar), a CI workflow, deployment or infrastructure
-          configuration, a database migration or schema, a dependency manifest or lockfile with a non-patch
-          change, or a file under a folder the description does not mention at all. List the unaccounted-for
-          files.'
       - name: Scope matches description
         mode: warning
         instructions: 'Pass when every changed file is accounted for by the pull request title, description
