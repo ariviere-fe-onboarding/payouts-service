@@ -59,7 +59,7 @@ def build_aging_report(session: Session, query: AgingQuery) -> AgingReport:
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=UTC)
         age_days = (query.as_of - created_at.astimezone(UTC).date()).days
-        if age_days <= query.min_age_days:
+        if age_days < query.min_age_days:
             continue
         key = (payout.employee_id, payout.currency)
         if key not in grouped:
@@ -74,7 +74,7 @@ def build_aging_report(session: Session, query: AgingQuery) -> AgingReport:
         employee = grouped[key]
         employee.payout_count += 1
         employee.total_cents += payout.amount_cents
-        employee.oldest_age_days = min(employee.oldest_age_days, age_days)
+        employee.oldest_age_days = max(employee.oldest_age_days, age_days)
         employee.expense_ids.append(payout.expense_id)
     return AgingReport(
         as_of=query.as_of,

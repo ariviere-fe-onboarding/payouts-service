@@ -20,7 +20,7 @@ def test_groups_held_payouts_and_excludes_ineligible_records(config: Config) -> 
     held = PayoutStatus.NEEDS_BANK_ACCOUNT
     records = [
         (1, "emp-priya", 1, 18450, held),
-        (2, "emp-priya", 1, 1550, held),
+        (2, "emp-priya", 5, 1550, held),
         (3, "emp-marcus", 3, 999, held),
         (4, "emp-lena", 12, 500, held),
         (5, "emp-jonah", 1, 800, PayoutStatus.SUBMITTED),
@@ -94,3 +94,30 @@ def test_empty_cli_report_is_valid_json(
     captured = capsys.readouterr()
     assert json.loads(captured.out) == {"as_of": "2026-11-13", "min_age_days": 14, "employees": []}
     assert captured.err == ""
+
+
+@pytest.mark.parametrize("min_age_days", [7, 0])
+def test_minimum_age_is_inclusive(config: Config, min_age_days: int) -> None:
+    engine = make_engine(config.database_url)
+    Base.metadata.create_all(engine)
+    with make_session_factory(engine)() as session:
+        for expense_id, day in [(1, 13 - min_age_days), (2, 14 - min_age_days)]:
+            session.add(
+                Payout(
+                    event_id=f"evt-{expense_id}",
+                    expense_id=expense_id,
+                    employee_id="emp-boundary",
+                    amount_cents=100,
+                    currency="USD",
+                    status=PayoutStatus.NEEDS_BANK_ACCOUNT,
+                    created_at=datetime(2026, 11, day, 23, 59, tzinfo=UTC),
+                )
+            )
+        session.commit()
+        report = build_aging_report(
+            session, AgingQuery(as_of=date(2026, 11, 13), min_age_days=min_age_days)
+        )
+        assert len(report.employees) == 1
+        assert report.employees[0].expense_ids == [1]
+        assert report.employees[0].oldest_age_days == min_age_days
+    engine.dispose()
