@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import csv
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from io import StringIO
 
 import pytest
@@ -101,3 +101,75 @@ def test_cli_separates_csv_from_progress(
     captured = capsys.readouterr()
     assert captured.out.startswith("payout_id,")
     assert captured.err == "Exported 0 payouts.\n"
+
+
+@pytest.mark.parametrize("start_day", [10, 12])
+def test_export_includes_entire_end_date(config: Config, start_day: int) -> None:
+    engine = make_engine(config.database_url)
+    Base.metadata.create_all(engine)
+    start = datetime(2026, 11, start_day, tzinfo=UTC)
+    with make_session_factory(engine)() as session:
+        timestamps = [
+            start - timedelta(microseconds=1),
+            start,
+            datetime(2026, 11, 12, 12, tzinfo=UTC),
+            datetime(2026, 11, 12, 23, 59, 59, 999999, tzinfo=UTC),
+            datetime(2026, 11, 13, tzinfo=UTC),
+        ]
+        for expense_id, created_at in enumerate(timestamps, start=1):
+            session.add(
+                Payout(
+                    event_id=f"evt-{expense_id}",
+                    expense_id=expense_id,
+                    employee_id="emp-priya",
+                    amount_cents=100,
+                    currency="USD",
+                    status=PayoutStatus.SUBMITTED,
+                    created_at=created_at,
+                )
+            )
+        session.commit()
+        output = StringIO()
+        count = export_reconciliation(
+            session,
+            ReconciliationWindow(start_date=start.date(), end_date=date(2026, 11, 12)),
+            output,
+        )
+        rows = list(csv.DictReader(StringIO(output.getvalue())))
+        assert count == 3
+        assert [row["expense_id"] for row in rows] == ["2", "3", "4"]
+    engine.dispose()
+
+
+def test_export_includes_only_submitted_payouts(config: Config) -> None:
+    engine = make_engine(config.database_url)
+    Base.metadata.create_all(engine)
+    with make_session_factory(engine)() as session:
+        for expense_id, status in enumerate(PayoutStatus, start=1):
+            session.add(
+                Payout(
+                    event_id=f"evt-{expense_id}",
+                    expense_id=expense_id,
+                    employee_id="emp-priya",
+                    amount_cents=100,
+                    currency="USD",
+                    status=status,
+                    created_at=datetime(2026, 11, 11, 12, tzinfo=UTC),
+                )
+            )
+        session.commit()
+        before = {p.id: p.status for p in session.scalars(select(Payout))}
+        output = StringIO()
+        count = export_reconciliation(
+            session,
+            ReconciliationWindow(start_date=date(2026, 11, 10), end_date=date(2026, 11, 12)),
+            output,
+        )
+        rows = list(csv.DictReader(StringIO(output.getvalue())))
+        assert count == 1
+        assert [int(row["payout_id"]) for row in rows] == [
+            payout_id for payout_id, status in before.items() if status == PayoutStatus.SUBMITTED
+        ]
+        session.expire_all()
+        assert {p.id: p.status for p in session.scalars(select(Payout))} == before
+    engine.dispose()

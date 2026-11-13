@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from payouts.config import get_config
 from payouts.db import make_engine, make_session_factory
-from payouts.models import Payout
+from payouts.models import Payout, PayoutStatus
 
 CSV_COLUMNS = (
     "payout_id",
@@ -46,10 +46,14 @@ class ReconciliationWindow(BaseModel):
 def export_reconciliation(session: Session, window: ReconciliationWindow, output: TextIO) -> int:
     """Write submitted payouts in the requested date window; return the row count."""
     start = datetime.combine(window.start_date, time.min, tzinfo=UTC)
-    end = datetime.combine(window.end_date, time.min, tzinfo=UTC)
+    end = datetime.combine(window.end_date, time.max, tzinfo=UTC)
     payouts = session.scalars(
         select(Payout)
-        .where(Payout.created_at >= start, Payout.created_at <= end)
+        .where(
+            Payout.created_at >= start,
+            Payout.created_at <= end,
+            Payout.status == PayoutStatus.SUBMITTED,
+        )
         .order_by(Payout.created_at, Payout.id)
     )
     writer = csv.writer(output)
