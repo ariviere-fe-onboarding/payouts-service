@@ -122,7 +122,7 @@ reviews:
           contracts guideline, or would break the producer in expense-app.
   finishing_touches:
     autofix:
-      enabled: false
+      enabled: true
     fix_ci:
       enabled: false
     docstrings:
